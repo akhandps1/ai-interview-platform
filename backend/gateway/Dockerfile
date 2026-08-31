@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY package*json ./
 
-RUN cd gateway && npm install
+RUN npm install
 
 COPY ./gateway/package*json ./gateway/
 
@@ -19,4 +19,3 @@ WORKDIR /app/gateway
 EXPOSE 8000
 
 CMD [ "npm","start" ]
-
