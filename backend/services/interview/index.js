@@ -1,0 +1,32 @@
+/**
+ * FILE: backend/services/interview/index.js
+ * PURPOSE: Core logic and configuration for index.js.
+ */
+import express from "express"
+import dotenv from "dotenv"
+import { connectDB } from "./config/db.js"
+import interviewRouter from "./routes/interview.route.js"
+dotenv.config()
+
+const app = express()
+
+app.use(express.json())
+
+const PORT = process.env.PORT || 6003
+
+app.get("/" , (req,res)=>{
+    res.send("Hello from Interview-service")
+})
+
+
+app.use("/",interviewRouter)
+
+
+if (process.env.NODE_ENV !== "test") {
+    app.listen(PORT , ()=>{
+        console.log(`Interview-service Started on ${PORT}`)
+        connectDB()
+    })
+}
+
+export default app;
