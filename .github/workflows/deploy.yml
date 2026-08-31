@@ -1,86 +1,32 @@
-name: 🚀 Build, Push & Deploy to AWS EC2
+name: 🚀 Deploy to AWS EC2
 
 on:
   push:
     branches: [ main, master ]
 
-env:
-  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-
 jobs:
-  # ─── JOB 1: BUILD & PUSH ALL IMAGES TO DOCKERHUB ───────────────
-  build-and-push:
-    name: Build Docker Images & Push to DockerHub
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: 📦 Checkout Code
-        uses: actions/checkout@v4
-
-      - name: 🔑 Login to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: 🏗️ Build & Push All Images
-        env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
-          VITE_FIREBASE_APIKEY: ${{ secrets.VITE_FIREBASE_APIKEY }}
-          GATEWAY_PUBLIC_URL: http://${{ secrets.EC2_HOST }}:8000
-        run: |
-          docker-compose build
-          docker-compose push
-
-  # ─── JOB 2: DEPLOY ON EC2 ───────────────────────────────────────
   deploy:
     name: Deploy to AWS EC2
     runs-on: ubuntu-latest
-    needs: build-and-push
 
     steps:
       - name: 🚀 SSH into EC2 and Deploy
         uses: appleboy/ssh-action@v1.0.3
-        env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
-          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-          VITE_FIREBASE_APIKEY: ${{ secrets.VITE_FIREBASE_APIKEY }}
-          EC2_HOST: ${{ secrets.EC2_HOST }}
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
+          username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: GROQ_API_KEY,RAZORPAY_KEY_ID,RAZORPAY_KEY_SECRET,YOUTUBE_API_KEY,VITE_FIREBASE_APIKEY,EC2_HOST
           script: |
             cd ~/ai-interview-platform
+            
+            # Pull latest code
+            git pull origin main
 
-            # Write fresh .env file from GitHub Secrets
-            cat > .env << ENVEOF
-            AUTH_MONGODB_URL=mongodb://mongodb:27017/auth_db
-            RESUME_MONGODB_URL=mongodb://mongodb:27017/resume_db
-            INTERVIEW_MONGODB_URL=mongodb://mongodb:27017/interview_db
-            ROADMAP_MONGODB_URL=mongodb://mongodb:27017/roadmap_db
-            BILLING_MONGODB_URL=mongodb://mongodb:27017/billing_db
-            GROQ_API_KEY=$GROQ_API_KEY
-            RAZORPAY_KEY_ID=$RAZORPAY_KEY_ID
-            RAZORPAY_KEY_SECRET=$RAZORPAY_KEY_SECRET
-            YOUTUBE_API_KEY=$YOUTUBE_API_KEY
-            VITE_FIREBASE_APIKEY=$VITE_FIREBASE_APIKEY
-            FRONTEND_PUBLIC_URL=http://$EC2_HOST
-            GATEWAY_PUBLIC_URL=http://$EC2_HOST:8000
-            ENVEOF
-
-            # Pull latest images
-            docker-compose pull
-
-            # Restart all containers
-            docker-compose up -d --remove-orphans
+            # Rebuild and restart only the containers that have code changes
+            sudo docker-compose up -d --build
 
             # Remove old/unused images to save disk space
-            docker image prune -af
+            sudo docker image prune -f
             
             echo "✅ Deployment Complete!"
-            docker ps
+            sudo docker-compose ps
