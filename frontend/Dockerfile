@@ -9,8 +9,8 @@ ARG VITE_RAZORPAY_KEY_ID
 ARG VITE_BACKEND_URL
 ENV VITE_FIREBASE_APIKEY=$VITE_FIREBASE_APIKEY
 ENV VITE_RAZORPAY_KEY_ID=$VITE_RAZORPAY_KEY_ID
-# We hardcode /api as the backend URL so Nginx can proxy it.
-ENV VITE_BACKEND_URL=/api
+# Backend URL is empty so Axios uses relative paths (e.g., /api/me)
+ENV VITE_BACKEND_URL=""
 RUN npm run build
 
 FROM nginx:alpine
